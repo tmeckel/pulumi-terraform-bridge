@@ -22,10 +22,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 	"sort"
 	"strings"
+
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	"github.com/gedex/inflector"
 	"github.com/hashicorp/go-multierror"
@@ -110,7 +111,7 @@ func (nt *schemaNestedTypes) declareType(
 
 	required := codegen.StringSet{}
 	for _, p := range typ.properties {
-		if !p.optional() {
+		if !p.optional() || (p.info != nil && p.info.ForceComputed != nil && *p.info.ForceComputed) {
 			required.Add(p.name)
 		}
 	}

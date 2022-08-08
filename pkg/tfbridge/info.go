@@ -257,6 +257,10 @@ type SchemaInfo struct {
 
 	// whether or not to treat this property as secret
 	Secret *bool
+
+	// Force the property to be computed so that the value can be read even if the upstream provider didn't set the flag
+	ForceComputed *bool
+
 }
 
 // ConfigInfo represents a synthetic configuration variable that is Pulumi-only, and not passed to Terraform.
