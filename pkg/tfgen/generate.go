@@ -337,8 +337,8 @@ type propertyType struct {
 
 func (g *Generator) makePropertyType(typePath paths.TypePath,
 	objectName string, sch shim.Schema, info *tfbridge.SchemaInfo, out bool,
-	entityDocs entityDocs) *propertyType {
-
+	entityDocs entityDocs,
+) *propertyType {
 	t := &propertyType{}
 
 	var elemInfo *tfbridge.SchemaInfo
@@ -426,8 +426,8 @@ func (g *Generator) makePropertyType(typePath paths.TypePath,
 
 func (g *Generator) makeObjectPropertyType(typePath paths.TypePath,
 	objPath docsPath, res shim.Resource, info *tfbridge.SchemaInfo,
-	out bool, entityDocs entityDocs) *propertyType {
-
+	out bool, entityDocs entityDocs,
+) *propertyType {
 	t := &propertyType{
 		kind: kindObject,
 	}
@@ -615,8 +615,8 @@ func (rt *resourceType) TypeToken() tokens.Type {
 func newResourceType(resourcePath *paths.ResourcePath,
 	mod tokens.Module, name tokens.TypeName, entityDocs entityDocs,
 	schema shim.Resource, info *tfbridge.ResourceInfo,
-	isProvider bool) *resourceType {
-
+	isProvider bool,
+) *resourceType {
 	// We want to add the import details to the description so we can display those for the user
 	description := entityDocs.Description
 	if entityDocs.Import != "" {
@@ -768,7 +768,7 @@ func NewGenerator(opts GeneratorOptions) (*Generator, error) {
 			return nil, err
 		}
 		p = filepath.Join(p, defaultOutDir, string(lang))
-		if err = os.MkdirAll(p, 0700); err != nil {
+		if err = os.MkdirAll(p, 0o700); err != nil {
 			return nil, err
 		}
 		root = afero.NewBasePathFs(afero.NewOsFs(), p)
@@ -850,7 +850,6 @@ type GenerateOptions struct {
 
 // Generate creates Pulumi packages from the information it was initialized with.
 func (g *Generator) Generate() error {
-
 	// First gather up the entire package contents. This structure is complete and sufficient to hand off to the
 	// language-specific generators to create the full output.
 	pack, err := g.gatherPackage()
@@ -1198,8 +1197,8 @@ func (g *Generator) gatherResources() (moduleMap, error) {
 
 // gatherResource returns the module name and one or more module members to represent the given resource.
 func (g *Generator) gatherResource(rawname string,
-	schema shim.Resource, info *tfbridge.ResourceInfo, isProvider bool) (*resourceType, error) {
-
+	schema shim.Resource, info *tfbridge.ResourceInfo, isProvider bool,
+) (*resourceType, error) {
 	// Get the resource's module and name.
 	name, moduleName := resourceName(g.info.Name, rawname, info, isProvider)
 	mod := tokens.NewModuleToken(g.pkg, moduleName)
@@ -1399,8 +1398,8 @@ func (g *Generator) gatherDataSources() (moduleMap, error) {
 
 // gatherDataSource returns the module name and members for the given data source function.
 func (g *Generator) gatherDataSource(rawname string,
-	ds shim.Resource, info *tfbridge.DataSourceInfo) (*resourceFunc, error) {
-
+	ds shim.Resource, info *tfbridge.DataSourceInfo,
+) (*resourceFunc, error) {
 	// Generate the name and module for this data source.
 	name, moduleName := dataSourceName(g.info.Name, rawname, info)
 	mod := tokens.NewModuleToken(g.pkg, moduleName)
@@ -1632,8 +1631,8 @@ func propertyName(key string, sch shim.SchemaMap, custom map[string]*tfbridge.Sc
 // parentPath together with key uniquely locates the property in the Terraform schema.
 func (g *Generator) propertyVariable(parentPath paths.TypePath, key string,
 	sch shim.SchemaMap, info map[string]*tfbridge.SchemaInfo,
-	doc string, rawdoc string, out bool, entityDocs entityDocs) *variable {
-
+	doc string, rawdoc string, out bool, entityDocs entityDocs,
+) *variable {
 	if name := propertyName(key, sch, info); name != "" {
 		propName := paths.PropertyName{Key: key, Name: tokens.Name(name)}
 		typePath := paths.NewProperyPath(parentPath, propName)
@@ -1649,6 +1648,8 @@ func (g *Generator) propertyVariable(parentPath paths.TypePath, key string,
 		var varInfo *tfbridge.SchemaInfo
 		if info != nil {
 			varInfo = info[key]
+			out = out || ((varInfo.MarkAsComputedOnly != nil && *varInfo.MarkAsComputedOnly) ||
+				(varInfo.MarkAsComputed != nil && *varInfo.MarkAsComputed))
 		}
 
 		// If a variable is marked as omitted, omit it.
@@ -1680,7 +1681,8 @@ func (g *Generator) propertyVariable(parentPath paths.TypePath, key string,
 
 // dataSourceName translates a Terraform name into its Pulumi name equivalent.
 func dataSourceName(provider string, rawname string,
-	info *tfbridge.DataSourceInfo) (tokens.ModuleMemberName, tokens.ModuleName) {
+	info *tfbridge.DataSourceInfo,
+) (tokens.ModuleMemberName, tokens.ModuleName) {
 	if info == nil || info.Tok == "" {
 		// default transformations.
 		name := withoutPackageName(provider, rawname) // strip off the pkg prefix.
@@ -1693,7 +1695,8 @@ func dataSourceName(provider string, rawname string,
 
 // resourceName translates a Terraform name into its Pulumi name equivalent, plus a module name.
 func resourceName(provider string, rawname string,
-	info *tfbridge.ResourceInfo, isProvider bool) (tokens.TypeName, tokens.ModuleName) {
+	info *tfbridge.ResourceInfo, isProvider bool,
+) (tokens.TypeName, tokens.ModuleName) {
 	if isProvider {
 		return "Provider", indexMod
 	}
@@ -1778,8 +1781,8 @@ func getLicenseTypeURL(license tfbridge.TFProviderLicense) string {
 }
 
 func getOverlayFilesImpl(overlay *tfbridge.OverlayInfo, extension string,
-	fs afero.Fs, srcRoot, dir string, files map[string][]byte) error {
-
+	fs afero.Fs, srcRoot, dir string, files map[string][]byte,
+) error {
 	for _, f := range overlay.DestFiles {
 		if path.Ext(f) == extension {
 			fp := path.Join(dir, f)
@@ -1817,7 +1820,7 @@ func getOverlayFiles(overlay *tfbridge.OverlayInfo, extension string, root afero
 }
 
 func emitFile(fs afero.Fs, relPath string, contents []byte) error {
-	if err := fs.MkdirAll(path.Dir(relPath), 0700); err != nil {
+	if err := fs.MkdirAll(path.Dir(relPath), 0o700); err != nil {
 		return errors.Wrap(err, "creating directory")
 	}
 
