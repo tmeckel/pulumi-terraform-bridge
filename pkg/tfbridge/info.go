@@ -452,8 +452,11 @@ type SchemaInfo struct {
 	// to remove empty object array elements
 	SuppressEmptyMapElements *bool
 
-	// this will make the parameter as computed and not allow the user to set it
+	// this will mark the parameter as computed and not allow the user to set it
 	MarkAsComputedOnly *bool
+
+	// this will mark the parameter as computed which will make the property an output
+	MarkAsComputed *bool
 
 	// this will make the parameter optional in the schema
 	MarkAsOptional *bool
